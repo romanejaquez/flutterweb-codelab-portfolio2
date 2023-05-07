@@ -1,0 +1,1488 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Flutter Web Codelab (pt. 2) - Flutter Web Apps / Using Riverpod</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements-tmp/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id="flutter-web-codelab-riverpod2"
+                  title="Flutter Web Codelab (pt. 2) - Flutter Web Apps / Using Riverpod"
+                  environment="web"
+                  feedback-link="https://romanjustcodes.web.app">
+    
+      <google-codelab-step label="Overview" duration="0">
+        <p>Thank you for sticking around throughout this series of codelabs around Flutter Web.</p>
+<h2 is-upgraded>NOTE: THIS IS NOT A BEGINNER CODELAB</h2>
+<p>(If you&#39;re looking for more beginner content, please visit some of my other codelabs <a href="https://romanjustcodes.web.app/#/workshops" target="_blank">here</a>). If you&#39;re up for the challenge, then proceed.</p>
+<p>This is the second of a codelab series focused on Flutter Web. Follow <a href="https://romanejaquez.github.io/flutterweb-codelab-portfolio1" target="_blank">this link</a> for part one of this series, where we learned how to set up our project and lay down some foundational items.</p>
+<p>In Part 2, you will continue building the Flutter portfolio web app and learn the following:</p>
+<ul>
+<li>Build the navigation feature</li>
+<li>State Management using <a href="https://riverpod.dev/" target="_blank">Riverpod</a></li>
+<li>Create data repositories that feed data (mocked for now) into the app</li>
+<li>Create providers that hydrate the user interface accordingly</li>
+<li>Build out the rest of the feature pages for this web app</li>
+</ul>
+<p>Let&#39;s proceed!!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Setting up the State Management Foundation on the project" duration="0">
+        <p>We need to use a solution to manage the reactive data binding and caching of our applicaton&#39;s data, as well as use it as our de facto state management strategy for this web app.</p>
+<p>The best approach is to separate the data from the UI rendering logic, and for that we&#39;ll review <strong><em>state management</em></strong> - a very hot and debated topic in the Flutter community.</p>
+<p><strong>State Management</strong> is how we organize our app to most effectively access state and share it across widgets. State Management has two goals:</p>
+<ul>
+<li>Provide access to data</li>
+<li>Tell widgets that they need to be redrawn when the data changes</li>
+</ul>
+<p>State Management then becomes the guardrail layer in between that gives us the ability to do both of those things above. Plain and simple.</p>
+<p>We&#39;ll use one of the more popular packages called <a href="https://riverpod.dev/" target="_blank"><strong>Riverpod</strong></a> which encapsulates the best of all worlds: dependency injection, service location, reactive caching, and more.</p>
+<p>The state management approach of <strong>Riverpod</strong> revolves around <strong>providers</strong> - objects that encapsulate a piece of state and allows listening to that state. We will create providers that will encapsulate the data for each of our features, as well as for the data that populates the navigation items and state of each of  those navigation items (selected or not selected).</p>
+<h2 is-upgraded>Install Riverpod</h2>
+<p>Before proceeding any further,  you must install the <strong>Riverpod</strong> package, available via <strong>pub.dev</strong> by running the following command on your terminal:</p>
+<pre><code language="language-dart" class="language-dart">flutter pub add flutter_riverpod
+</code></pre>
+<p>This will install the Riverpod package to use it in Flutter, and add the required dependencies on your <strong>pubspec.yaml</strong>.</p>
+<p>Add the required import at the top of the <strong>main.dart</strong> file:</p>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter_riverpod/flutter_riverpod.dart&#39;;
+
+</code></pre>
+<p>Next, wrap the root of the app (the <strong>PortfolioApp</strong> instance) injected via the <strong>runApp</strong> method inside a <strong>ProviderScope</strong> widget; this is a Riverpod construct that must be added at the root of your Flutter application for Riverpod to work.</p>
+<pre><code language="language-dart" class="language-dart">void main() {
+  runApp(
+    const ProviderScope(
+      child: PortfolioApp()
+    )
+  );
+}
+
+</code></pre>
+<p>With this in place, we need to define some data models to support that notion, and we&#39;ll start with the navigation feature. Hit <strong>Next</strong> to proceed.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Set up the Navigation Feature - Using Riverpod" duration="0">
+        <p>In the <strong>features</strong> folder, create a subfolder called <strong>navigation</strong>, and create the following structure under it:</p>
+<ul>
+<li><strong>navigation</strong><ul>
+<li><strong>presentation</strong><ul>
+<li><strong>widgets</strong><ul>
+<li><strong><em>left_navigation_item_tile.dart</em></strong></li>
+<li><strong><em>left_navigation.dart</em></strong></li>
+</ul>
+</li>
+<li><strong>viewmodels</strong><ul>
+<li><strong><em>left_navigation.viewmodel.dart</em></strong></li>
+</ul>
+</li>
+<li><strong>providers</strong><ul>
+<li><strong><em>navigation_providers.dart</em></strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>data</strong><ul>
+<li><strong>models</strong><ul>
+<li><strong><em>left_navigation_item.dart</em></strong></li>
+</ul>
+</li>
+<li><strong>repositories</strong><ul>
+<li><strong><em>inavigation.repository.dart</em></strong></li>
+<li><strong><em>mock_navigation.repository.dart</em></strong></li>
+<li><strong><em>navigation.repository.dart</em></strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Adding PODO classes for our navigation data" duration="0">
+        <p>Let&#39;s start by creating PODO (Plain Ol&#39; Dart Object) classes that will hold the data for our navigation items.</p>
+<p>In the <strong>navigation/data/models/left_navigation_item.dart</strong> file, add the following class; this represents the data model for a single navigation item.</p>
+<p>We need to capture the following:</p>
+<ul>
+<li>the icon representative of the page we are navigating to</li>
+<li>an optional label</li>
+<li>the route we are navigating to (tapping into the <strong>GoRouter</strong> navigation strategy)</li>
+<li>whether the navigation item is selected or not (as part of the navigation item&#39;s state)</li>
+</ul>
+<p>Add the code below to the file in question:</p>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter/material.dart&#39;;
+
+class LeftNavigationItem {
+  final IconData icon;
+  final String label;
+  final String route;
+  final bool isSelected;
+
+  LeftNavigationItem({
+    required this.icon,
+    required this.label,
+    required this.route,
+    required this.isSelected
+  });
+
+  LeftNavigationItem copyWith({
+      IconData? icon,
+      String? label,
+      String? route,
+      bool? isSelected
+    }) {
+      return LeftNavigationItem(
+        icon: icon ?? this.icon, 
+        label: label ?? this.label, 
+        route: route ?? this.route,
+        isSelected: isSelected ?? this.isSelected 
+    );
+  }
+}
+
+</code></pre>
+<p>Notice the <strong>copyWith()</strong> method; the primary benefit of using <strong>copyWith()</strong> is that you don&#39;t mutate the original object, but instead return a new object with the same properties as the original, but with the values you specify. This allows you to create applications that are easier to test and easier to maintain as objects themselves don&#39;t harbor mutable state.</p>
+<p><strong>ADDITIONAL NOTE ON IMMUTABILITY</strong>: The model definition above is immutable. <strong>Immutable</strong> objects provide guarantees that multiple sources do not alter the state of the app at an instant in time. This protection frees up the UI to focus on a single role: to read the state and update the UI elements accordingly. Therefore, you should never modify the UI state in the UI directly, unless the UI itself is the sole source of its data. Violating this principle results in multiple sources of truth for the same piece of information, leading to data inconsistencies and subtle bugs.</p>
+<h2 is-upgraded>Create synthetic data for our navigation items</h2>
+<p>We need to populate this model with data so we can feed it into our app. We&#39;ll use a repository for this; but first we&#39;ll define a simple signature for what the actual implementation will look like.</p>
+<p>In the <strong>navigation/data/repositories/inavigation.repository.dart</strong> file, add the following abstract class:</p>
+<pre><code language="language-dart" class="language-dart">import &#39;package:roman_web_portfolio/features/navigation/data/models/left_navigation_item.dart&#39;;
+
+abstract class INavigationRepository {
+
+  List&lt;LeftNavigationItem&gt; getDefaultNavItems();
+}
+
+</code></pre>
+<p>We define an interface class as <strong>abstract</strong> so the implementing classes provide their own implementation, and since class declarations are themselves interfaces in Dart, this accomplishes our goal of defining some sort of contact for implementing classes. This will aid us in making this app more testable and lends itself for mocking our data.</p>
+<p>We want all implementing repository classes to implement the <strong>getDefaultNavItems()</strong> method, and should return a list of <strong>LeftNavigationItem</strong> instances.</p>
+<p>Notice how we created a <strong>mock_navigation.repository.dart</strong> for mock implementations, and a <strong>navigation.repository.dart</strong> for the real implementation. For now we&#39;ll use the mock version since we&#39;ll be pulling data locally; later we can pull this data from Firebase.</p>
+<p>Go go the <strong>navigation/repositories/mock_navigation.repository.dart</strong> file and add the following code (add the required imports as needed):</p>
+<pre><code language="language-dart" class="language-dart">class MockNavigationRepository extends INavigationRepository {
+    
+  @override
+  List&lt;LeftNavigationItem&gt; getDefaultNavItems() {
+    return [
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.user,
+        label: &#39;My Profile&#39;,
+        route: WelcomePage.route,
+        isSelected: true
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.twitter,
+        label: &#39;Twitter&#39;,
+        route: &#39;&#39;,
+        isSelected: false
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.linkedin,
+        label: &#39;LinkedIn&#39;,
+        route: &#39;&#39;,
+        isSelected: false
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.web,
+        label: &#39;Web&#39;,
+        route: &#39;&#39;,
+        isSelected: false
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.github,
+        label: &#39;Github&#39;,
+        route: &#39;&#39;,
+        isSelected: false
+      ),
+    ];
+  }
+}
+
+</code></pre>
+<p>We&#39;ll use this mock implementation to feed this hard-coded list of navigation items to get us going for now. Notice how we only have the <strong>WelcomePage.route</strong> route set in the <strong>route</strong> property of the corresponding <strong>LeftNavigationItem</strong> while the others are empty. As we build the features, we&#39;ll come back to this one and add the missing route values.</p>
+<h2 is-upgraded>Create the Navigation Data Providers</h2>
+<p>Go to the <strong>navigation/presentation/providers/navigation_providers.dart</strong> and let&#39;s add the providers we need.</p>
+<p>First you need a provider that will encapsulate an instance that implements <strong>INavigationRepository</strong>; that&#39;s why we&#39;ll use the <strong>MockNavigationRepository</strong> to feed the mocked navigation items.</p>
+<p>Add the following code:</p>
+<pre><code language="language-dart" class="language-dart">//... inside your navigation_providers.dart
+
+final navigationRepositoryProvider = Provider&lt;INavigationRepository&gt;((ref) {
+  return MockNavigationRepository();
+});
+
+</code></pre>
+<p>See how we create an instance of the Riverpod <strong>Provider</strong>, which returns an instance of an entity that encapsulates our read-only data.</p>
+<p>Now we need another provider that &#34;reads&#34; this repository (whether mocked or real) and pulls the list of navigation items. Add the following provider under the previous one:</p>
+<pre><code language="language-dart" class="language-dart">//... also inside your navigation_providers.dart
+
+final navigationItemsProvider = Provider&lt;List&lt;LeftNavigationItem&gt;&gt;((ref) {
+  return ref.read(navigationRepositoryProvider).getDefaultNavItems();
+});
+
+</code></pre>
+<p>Notice how using the <strong>ref</strong> object fed into the <strong>Provider</strong>&#39;s callback we are able to use it and invoke its <strong>read()</strong> method so we can read other providers available.</p>
+<p>Both of them use the <strong>Provider</strong> provider, since their values will be read-only. In the future we may use other providers that fetch data asynchronously from a backend (i.e. Firebase), but for now this suffices.</p>
+<p>We&#39;ll need an entity that maintains the state of the list of navigation items as well as handle the currently selected item and perform the necessary actions after tapping one of them.</p>
+<p>We&#39;ll create a viewmodel class called <strong>LeftNavigationViewModel</strong> in the <strong>navigation/presentation/viewmodels/leftnavigation.viewmodel.dart</strong>, which takes two parameters: the list of <strong>LeftNavigationItem</strong> instances to manage as its state, and a <strong>Ref</strong> object, so we can use it to read other providers from inside this viewmodel.</p>
+<p>Add the following code (plus the required imports):</p>
+<pre><code language="language-dart" class="language-dart">class LeftNavigationViewModel extends StateNotifier&lt;List&lt;LeftNavigationItem&gt;&gt; {
+
+  final Ref ref;
+  LeftNavigationViewModel(List&lt;LeftNavigationItem&gt; items, this.ref) : super([]) {
+    state = items;
+
+    var item = state.first;
+    selectNavItem(item);
+  }
+
+  void selectNavItem(LeftNavigationItem item) {
+    
+    if (item.route.isNotEmpty) {
+      GoRouter.of(Utils.tabNav.currentContext!).go(item.route);
+    }
+
+    state = [
+      for (var element in state)
+       element.copyWith(isSelected: item == element)
+    ];
+  }
+}
+
+</code></pre>
+<p>Notice how this class extends <a href="https://pub.dev/documentation/state_notifier/latest/state_notifier/StateNotifier-class.html" target="_blank"><strong>StateNotifier</strong></a>, an observable class that stores a single immutable state. In this case, the immutable state is the list of <strong>LeftNavigationItem</strong> instances (denoted by the type of <strong>StateNotifier</strong> - <strong>StateNotifier&lt;List&lt;LeftNavigationItem&gt;&gt;</strong>).</p>
+<p>We can expose methods on our <strong>StateNotifier</strong> class to allow other objects to modify its internal state. In our case, we created a method called <strong>selectNavItem()</strong> which takes the currently selected navigation item instance, checks whether its <strong>route</strong> property is not empty so as to perform the navigation to the corresponding route, and at the end, it assigns its internal <strong>state</strong> property to a new value (by generating a new immutable list of updated navigation items) which will automatically notify the listeners and update the UI.</p>
+<p>Now let&#39;s make use of this viewmodel back in the navigation providers.</p>
+<p>Go to the <strong>navigation/presentation/providers/navigation_providers.dart</strong> and add the following provider:</p>
+<pre><code language="language-dart" class="language-dart">//... also inside your navigation_providers.dart
+
+final navigationItemsViewModelProvider = StateNotifierProvider&lt;LeftNavigationViewModel, 
+  List&lt;LeftNavigationItem&gt;&gt;((ref) {
+  var items = ref.read(navigationItemsProvider);
+  return LeftNavigationViewModel(items, ref);
+});
+
+</code></pre>
+<p>Notice how we are using another kind of provider - the <strong>StateNotifierProvider</strong>, suitable for wrapping instances that implement <strong>StateNotifier</strong> - in our case, the <strong>LeftNavigationViewModel</strong>. The signature must be:</p>
+<ul>
+<li>StateNotifierProvider&lt;IMPLEMENTING_CLASS, STATE&gt; where <strong>IMPLEMENTING_CLASS</strong> is the class that implements <strong>StateNotifier</strong> (in our case, <strong>LeftNavigationViewModel</strong>) and the <strong>STATE</strong> is the type of state being managed by this notifier - a list of <strong>LeftNavigationItem</strong> instances.</li>
+</ul>
+<p>Inside this provider we read the <strong>navigationItemsProvider</strong> provider, feed the returned list of items to a new instance of <strong>LeftNavigationViewModel</strong> along with the injected <strong>Ref</strong> instance.</p>
+<p>We&#39;ll then consume this provider inside our UI.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Build the Navigation UI" duration="0">
+        <p>With all the hooks in place (data, repository and providers), let&#39;s build out the UI representing the navigation.</p>
+<p>We&#39;ll build this UI based on the schematics below:</p>
+<p class="image-container"><img alt="App" src="img/d20c9daf0ace918c.png"></p>
+<p>Let&#39;s go to the <strong>navigation/presentation/widgets/left_navigation.dart</strong> file and add the following code (with the required imports as usual):</p>
+<pre><code language="language-dart" class="language-dart">class LeftNavigation extends ConsumerWidget {
+  const LeftNavigation({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    var navItems = ref.watch(navigationItemsViewModelProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.25),
+            Colors.transparent,
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter
+        )
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: List.generate(navItems.length, (index) {
+
+            // TODO: add the LeftNavigationItemTile widgets here
+            return const SizedBox.shrink();
+          }
+        ),
+      )
+
+    );
+  }
+}
+
+</code></pre>
+<p>Notice how this widget is extending <strong>ConsumerWidget</strong>; a <strong>ConsumerWidget</strong> is a widget that is identical to a <strong>StatelessWidget</strong> with the only difference being that it has an extra parameter on its build method: the <strong>ref</strong> object. We use this <strong>ref</strong> object to read or watch providers within the build method.</p>
+<p>Check out at the top of the <strong>build</strong> method how we are &#34;watching&#34; the <strong>navigationItemsViewModelProvider</strong>, which by just watching it or reading it, returns its <strong>state</strong> - a list of <strong>LeftNavigationItem</strong> instances, held in a local variable called <strong>navItems</strong>.</p>
+<p>In our case we are watching it - listening to any changes being assigned to it from inside the viewmodel. Later we&#39;ll see how we trigger a <strong>state</strong> update.</p>
+<p>We use this <strong>navItems</strong> via a <strong>List.generate</strong> method to feed a <strong>Column</strong> widget since we want them vertically laid out. The <strong>List.generate</strong> will churn out navigation items as it iterates through the list via its provided callback.</p>
+<p>Let&#39;s come back to that callback once we finish this following class. Go to the <strong>navigation/presentation/widgets/left_navigation_item_tile.dart</strong> file and add class called <strong>LeftNavigationItemTitle</strong>, also extending <strong>ConsumerWidget</strong> that takes as a parameter the current <strong>LeftNavigationItem</strong> in the iteration in a required parameter called  <strong>item</strong>.</p>
+<p>Your code should look like this (along with the required imports):</p>
+<pre><code language="language-dart" class="language-dart">class LeftNavigationItemTile extends ConsumerWidget {
+
+  final LeftNavigationItem item;
+  const LeftNavigationItemTile({
+    super.key,
+    required this.item  
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+      var navItemColor = item.isSelected ? 
+        Colors.white : Colors.white.withOpacity(0.25);
+
+      return Container(
+        margin: const EdgeInsets.only(top: 20, bottom: 20),
+        child: IconButton(
+          iconSize: 30,
+          icon: Icon(
+            item.icon,
+            color: navItemColor,
+          ),
+          onPressed: () {
+            ref.read(navigationItemsViewModelProvider.notifier).selectNavItem(item);
+          }
+        ),
+      );
+  }
+}
+
+</code></pre>
+<p>We flip the color of the selected icon by just checking the <strong>item</strong>&#39;s <strong>isSelected</strong> property. Notice how in the <strong>onPressed()</strong> event of the <strong>IconButton</strong> we read the <strong>navigationItemsViewModelProvider</strong>, but we read it in a special way: we call <strong>.notifier</strong> on it so we don&#39;t get its state, but an instance of the viewmodel itself, so we can invoke the methods that it exposes. In our case we want to call the <strong>selectNavItem()</strong> method, passing into it the current navigation item encapsulated into this widget.</p>
+<p>The <strong>selectNavItem()</strong> method in the viewmodel will intuitively grab this value, trigger a state change by reassigning its internal <strong>state</strong> property with an immutable version of the list of items (including an immutable version of the navigation item being passed), and triggering a rebuild all the way up to the <strong>LeftNavigation</strong> parent widget, which changes are trickled down, re-rendering the UI and showing the updated state.</p>
+<p>Go back to the <strong>LeftNavigation</strong> widget, inside the <strong>List.generate()</strong> callback and add the missing piece (replace the placeholder <strong>SizedBox</strong> and add the required import) as such:</p>
+<pre><code language="language-dart" class="language-dart">//... leftnavigation.dart
+//... inside the List.generate
+//... rest of the code omitted for brevity
+
+children: List.generate(navItems.length, (index) {
+        return LeftNavigationItemTile(
+            item: navItems[index]
+        );
+    }
+),
+
+</code></pre>
+<p>With this in place, let&#39;s proceed to integrate the navigation into the shell. Hit <strong>Next</strong> to proceed.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Integrate the Navigation in the Shell" duration="0">
+        <p>So far so good - but we still can&#39;t see anything since we haven&#39;t integrated it into the app. Let&#39;s make it part of the shell component as the navigation will display always as child pages get swapped in and out.</p>
+<p>Let&#39;s go to the <strong>features/shell/presentation/pages/portfoliomain.page.dart</strong> and refactor the <strong>build</strong> method to look like this:</p>
+<pre><code language="language-dart" class="language-dart">//... portfoliomain.page.dart
+//... rest of the code omitted for brevity
+@override
+Widget build(BuildContext context) {
+    return Scaffold(
+    key: Utils.mainScaffold,
+    backgroundColor: PersonalPortfolioColors.mainBlue,
+    body: Stack(
+        children: [
+                Center(
+                    child: child
+                ),
+                const Align(
+                    alignment: Alignment.centerLeft,
+                    child: LeftNavigation(),
+                ),
+            ],
+        )
+    );
+}
+
+</code></pre>
+<p>Notice how we created a <strong>Stack</strong> widget, where the injected views (via the <strong>child</strong> property) are centered, while the <strong>LeftNavigation</strong> widget sits aligned at the left of the screen. We also temporarily assigned a color to the <strong>Scaffold</strong>&#39;s background color so we can see the navigation.</p>
+<p>Rebuild the app and preview it on your browser, you should be seeing the following:</p>
+<p class="image-container"><img alt="App" src="img/c59ff14e62a3957a.gif"></p>
+<p>See how the navigation maintains the selected navigation item as we tap up and down the items - this is the power of Riverpod and providers!!</p>
+<p>Let&#39;s proceed to build out the rest of the feature pages and have placeholders for each of them as we develop them further.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Build the feature pages (placeholders)" duration="0">
+        <p>Before we proceed further, we need to have some of the plumbing in place for each one of the features we&#39;ll be building for this Flutter web app.</p>
+<p>Let&#39;s add the following pieces for each of our features; all the following folders should go under the <strong>feature</strong> folder as subfolders:</p>
+<ul>
+<li>Create a subfolder called <strong>twitter</strong>. <ul>
+<li>add a <strong>presentation</strong> subfolder under it.</li>
+<li>add a <strong>pages</strong> subfolder under <strong>presentation</strong>.</li>
+<li>add a file called <strong>twitter.page.dart</strong> inside the <strong>pages</strong> subfolder.</li>
+<li>add the following code:</li>
+</ul>
+</li>
+</ul>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter/material.dart&#39;;
+
+class TwitterPage extends StatelessWidget {
+
+  static const String route = &#34;/twitter&#34;;
+  const TwitterPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(&#39;Twitter Page!&#39;),
+    );
+  }
+}
+
+</code></pre>
+<ul>
+<li>Create a subfolder called <strong>github</strong>. <ul>
+<li>add a <strong>presentation</strong> subfolder under it.</li>
+<li>add a <strong>pages</strong> subfolder under <strong>presentation</strong>.</li>
+<li>add a file called <strong>github.page.dart</strong> inside the <strong>pages</strong> subfolder.</li>
+<li>add the following code:</li>
+</ul>
+</li>
+</ul>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter/material.dart&#39;;
+
+class GithubPage extends StatelessWidget {
+
+  static const String route = &#34;/github&#34;;
+  const GithubPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(&#39;Github Page!&#39;),
+    );
+  }
+}
+
+</code></pre>
+<ul>
+<li>Create a subfolder called <strong>linkedin</strong>. <ul>
+<li>add a <strong>presentation</strong> subfolder under it.</li>
+<li>add a <strong>pages</strong> subfolder under <strong>presentation</strong>.</li>
+<li>add a file called <strong>linkedin.page.dart</strong> inside the <strong>pages</strong> subfolder.</li>
+<li>add the following code:</li>
+</ul>
+</li>
+</ul>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter/material.dart&#39;;
+
+class LinkedInPage extends StatelessWidget {
+
+  static const String route = &#34;/linkedin&#34;;
+  const LinkedInPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(&#39;LinkedIn Page!&#39;),
+    );
+  }
+}
+
+</code></pre>
+<ul>
+<li>Create a subfolder called <strong>web</strong>. <ul>
+<li>add a <strong>presentation</strong> subfolder under it.</li>
+<li>add a <strong>pages</strong> subfolder under <strong>presentation</strong>.</li>
+<li>add a file called <strong>web.page.dart</strong> inside the <strong>pages</strong> subfolder.</li>
+<li>add the following code:</li>
+</ul>
+</li>
+</ul>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter/material.dart&#39;;
+
+class WebPage extends StatelessWidget {
+
+  static const String route = &#34;/web&#34;;
+  const WebPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(&#39;Web Page!&#39;),
+    );
+  }
+}
+
+</code></pre>
+<p>After wrapping up, you should end up with a folder structure like this:</p>
+<p class="image-container"><img alt="App" src="img/2b0a91ca4bad9f5.png"></p>
+<h2 is-upgraded>Fill in the blanks on the MockNavigationRepository</h2>
+<p>Go back to the <strong>navigation/data/repositories/mock_navigation.repository.dart</strong> file and fill in the missing routes for each of the corresponding navigation items. Your updated <strong>MockNavigationRepository</strong> class should look like below:</p>
+<pre><code language="language-dart" class="language-dart">class MockNavigationRepository extends INavigationRepository {
+    
+  @override
+  List&lt;LeftNavigationItem&gt; getDefaultNavItems() {
+    return [
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.user,
+        label: &#39;My Profile&#39;,
+        route: WelcomePage.route,
+        isSelected: true
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.twitter,
+        label: &#39;Twitter&#39;,
+        route: TwitterPage.route,
+        isSelected: false
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.linkedin,
+        label: &#39;LinkedIn&#39;,
+        route: LinkedInPage.route,
+        isSelected: false
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.web,
+        label: &#39;Web&#39;,
+        route: WebPage.route,
+        isSelected: false
+      ),
+      LeftNavigationItem(
+        icon: PersonalPortfolioIcons.github,
+        label: &#39;Github&#39;,
+        route: GithubPage.route,
+        isSelected: false
+      ),
+    ];
+  }
+}
+
+</code></pre>
+<h2 is-upgraded>Fill in the blanks on the AppRoutes</h2>
+<p>You are not done yet! You must go back to the <strong>app_routes.dart</strong> file and add the remaining routes for the placeholder pages we created. Under the <strong>ShellRoute</strong></p>
+<p>Your updated <strong>ShellRoute</strong> with the child routes in place for each page should look as follows:</p>
+<pre><code language="language-dart" class="language-dart">//... app_routes.dart
+//... rest of the code omitted for brevity
+
+ShellRoute(
+    navigatorKey: Utils.tabNav,
+    builder: (context, state, child) {
+        return PortfolioMainPage(child: child);
+    },
+    routes: [
+        GoRoute(
+            parentNavigatorKey: Utils.tabNav,
+            path: WelcomePage.route,
+            pageBuilder: (context, state) {
+                return const NoTransitionPage(
+                    child: WelcomePage()
+                );
+            }
+        ),
+        GoRoute(
+            parentNavigatorKey: Utils.tabNav,
+            path: TwitterPage.route,
+            pageBuilder: (context, state) {
+                return const NoTransitionPage(
+                    child: TwitterPage()
+                );
+            }
+        ),
+        GoRoute(
+            parentNavigatorKey: Utils.tabNav,
+            path: LinkedInPage.route,
+            pageBuilder: (context, state) {
+                return const NoTransitionPage(
+                    child: LinkedInPage()
+                );
+            }
+        ),
+        GoRoute(
+            parentNavigatorKey: Utils.tabNav,
+            path: GithubPage.route,
+            pageBuilder: (context, state) {
+                return const NoTransitionPage(
+                    child: GithubPage()
+                );
+            }
+        ),
+        GoRoute(
+            parentNavigatorKey: Utils.tabNav,
+            path: WebPage.route,
+            pageBuilder: (context, state) {
+                return const NoTransitionPage(
+                    child: WebPage()
+                );
+            }
+        ),
+    ]
+),
+
+</code></pre>
+<p>Take it for a spin and now you should see the content in the middle region of our shell changing to the content of the corresponding page being navigated. Hooray!!</p>
+<p class="image-container"><img alt="App" src="img/b0309dcfb9622934.gif"></p>
+<p>Let&#39;s proceed in building out some shared aspects of the application - the background color from the corresponding visited page.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Shared Widgets - Page Background Color" duration="0">
+        <p>Instead of making the background color part of each page, we&#39;ll make it as a separate widget that listens to the route of the currently navigated page and changes its color accordingly. This will allow us to continue getting familiar with providers and building shared entities in our apps.</p>
+<p>Go to the <strong>styles/colors.dart</strong> file and add the following map at the bottom of the file:</p>
+<pre><code language="language-dart" class="language-dart">//... colors.dart
+//... rest of the code omitted for brevity
+
+static Map&lt;String, LinearGradient&gt; pageColor = {
+    WelcomePage.route: const LinearGradient(
+        colors: [
+            PersonalPortfolioColors.welcomePrimary,
+            PersonalPortfolioColors.welcomeSecondary
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter
+    ),
+    TwitterPage.route: const LinearGradient(
+        colors: [
+            PersonalPortfolioColors.twitterPrimary,
+            PersonalPortfolioColors.twitterSecondary
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter
+    ),
+    LinkedInPage.route: const LinearGradient(
+        colors: [
+            PersonalPortfolioColors.linkedInPrimary,
+            PersonalPortfolioColors.linkedInSecondary
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter
+    ),
+    WebPage.route: const LinearGradient(
+        colors: [
+            PersonalPortfolioColors.webPrimary,
+            PersonalPortfolioColors.webSecondary
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter
+    ),
+    GithubPage.route: const LinearGradient(
+        colors: [
+            PersonalPortfolioColors.githubPrimary,
+            PersonalPortfolioColors.githubSecondary
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter
+    )
+};
+
+</code></pre>
+<p>We have a map entry for each of the page routes available, so that when the user navigates to that page, the background changes according to the colors configured.</p>
+<p>Let&#39;s create the first iteration of our shared components. Go ahead and create a folder called <strong>shared</strong> under the <strong>lib</strong> folder. Eventually we will contain entities that will be shared across pages within our web app, such as animations, providers, other widgets, etc.</p>
+<p>Inside the <strong>shared</strong> folder, create a subfolder called <strong>providers</strong>, and in turn, create a file called <strong>shared_providers.dart</strong>. This will encapsulate providers that we could use throughout our app - sure, providers are &#34;global&#34; in nature, but for organization purposes, we can keep these here inside this file.</p>
+<p>Open the <strong>shared_profiles.dart</strong> file and add the following provider (along with any required imports):</p>
+<pre><code language="language-dart" class="language-dart">final pageColorProvider = StateProvider&lt;LinearGradient&gt;((ref) {
+  return PersonalPortfolioColors.pageColor[WelcomePage.route]!;
+});
+
+</code></pre>
+<p>This is a <strong>StateProvider</strong> - another type of provider available in Riverpod. This is a type of provider whose value can be modified from outside, and whichever widget is watching this value, will get notified to be rebuilt. Here we are providing a default value initially (the route for the welcome page) but the intention is that anyone with access to reading this provider can set its state.</p>
+<p>Let&#39;s see how we both consume it and trigger it to broadcast its changes.</p>
+<p>In the <strong>shared</strong> folder, let&#39;s create a <strong>widgets</strong> subfolder - this will be the place where we&#39;ll put widgets that will be shared throughout the app.</p>
+<p>Inside the <strong>widgets</strong> subfolder, create a file called <strong>pagecolor.dart</strong> and add the following code inside (with the corresponding imports):</p>
+<pre><code language="language-dart" class="language-dart">class PageColor extends ConsumerWidget {
+  const PageColor({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    var pageGradient = ref.watch(pageColorProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: pageGradient
+      )
+    );
+  }
+}
+
+</code></pre>
+<p>We just created another <strong>ConsumerWidget</strong> that inside its <strong>build</strong> method watches for changes triggered by the <strong>pageColorProvider</strong>. Then in turn it pulls the information returned (the gradient mapped to the route) and displays it as a gradient inside a <strong>Container</strong> widget. Simple as that. Now, the way we want to trigger it is upon tapping on a navigation item - that&#39;s where we can capture the route before performing the navigation so we can display the corresponding background color.</p>
+<p>Go to the <strong>features/navigation/presentation/viewmodels/leftnavigation.viewmodel.dart</strong> file and right above the update to the <strong>state</strong>, add the following line:</p>
+<pre><code language="language-dart" class="language-dart">//... leftnavigation.viewmodel.dart
+//... rest of the code omitted for brevity
+
+ref.read(pageColorProvider.notifier).state = PersonalPortfolioColors.pageColor[item.route]!;
+
+</code></pre>
+<p>Based on the incoming selected navigation item, we extract the <strong>route</strong>, pull the corresponding gradient information and reset the state of our <strong>pageColorProvider</strong> using the <strong>ref.read(pageColorProvider.notifier).state</strong> syntax to obtain the state and assign a new one, thus triggering a change on whoever is listening (the <strong>PageColor</strong> widget in this case).</p>
+<p>With all of this in place, let&#39;s consume our <strong>PageColor</strong> widget by adding it inside the shell page&#39;s <strong>Stack</strong> all the way at the bottom, so the background shows behind the pages, so go to the <strong>features/shell/presentation/pages/portfoliomain.page.dart</strong> and add the following code:</p>
+<pre><code language="language-dart" class="language-dart">//... portfoliomain.page.dart
+//... rest of the code omitted for brevity
+
+Stack(
+    children: [
+        const PageColor(), // &lt;-- add the PageColor here, at the bottom of the Stack
+        Center(
+            child: child
+        ),
+        const Align(
+            alignment: Alignment.centerLeft,
+            child: LeftNavigation(),
+        ),
+    ],
+)
+
+</code></pre>
+<p>Run the app again (or do a hot restart) and make sure to start from the root url (/) and you should end up with a colorful sequence of page selections!</p>
+<p class="image-container"><img alt="App" src="img/dd660bf3b9f57a8.gif"></p>
+<p>Let&#39;s continue building up on the UI structure of the pages. Hit <strong>Next</strong> to proceed.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Build the Welcome Feature UI" duration="0">
+        <p>We&#39;ll build the UI for the welcome feature based on the following schematics:</p>
+<p class="image-container"><img alt="App" src="img/94356d407c017f7a.png"></p>
+<p>We&#39;ll also build the <strong>GreetingsLabel</strong> widget which cycles through multiple greetings in different languages. We&#39;ll deal with this a few steps below:</p>
+<p class="image-container"><img alt="App" src="img/edd4bad6e748e7c3.gif"></p>
+<p>Go to the <strong>features/welcome/presentation/pages/welcome.page.dart</strong> and replace the existing content of the <strong>build</strong> method by this structure; we&#39;ll first build it with hard-coded values at first:</p>
+<pre><code language="language-dart" class="language-dart">//... welcome.page.dart
+//... inside the build method:
+
+@override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: PersonalPortfolioColors.welcomePrimary, width: 8),
+                    shape: BoxShape.circle,
+                    image: const DecorationImage(
+                    image: NetworkImage(&#39;https://avatars.githubusercontent.com/u/5081804?v=4&#39;),
+                    fit: BoxFit.cover)
+                  )
+                ),
+                const SizedBox(width: 40),
+                const Icon(PersonalPortfolioIcons.wave,
+                  size: 90, color: PersonalPortfolioColors.welcomeIcon
+                )
+            ]
+          ),
+          const Text(&#34;Hello&#34;, style: TextStyle(
+              fontSize: 100,
+              fontWeight: FontWeight.bold,
+              color: Colors.white
+            ),
+          ),
+          const Text.rich(
+            TextSpan(
+            style: TextStyle(fontSize: 100, color: Colors.white),
+            children: [
+                TextSpan(text: &#34;I&#39;m &#34;),
+                TextSpan(
+                    text: &#39;Roman&#39;, 
+                    style: TextStyle(fontWeight: FontWeight.bold)
+                ),
+              ]
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                  PersonalPortfolioIcons.badge,
+                  color: PersonalPortfolioColors.welcomePrimary,
+                  size: 80
+              ),
+              const SizedBox(width: 20),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                    Text(&#39;Flutter GDE&#39;, textAlign: TextAlign.center, style: TextStyle(fontSize: 40, color: Colors.white)),
+                    Text(&#39;Certified Cloud Architect&#39;, textAlign: TextAlign.center, style: TextStyle(fontSize: 40, color: Colors.white)),
+                ],
+              )
+            ]
+          )
+        ]
+      )
+    );
+}
+
+</code></pre>
+<p>Make sure that your updated <strong>WelcomePage</strong> looks like this:</p>
+<p class="image-container"><img alt="App" src="img/8adcda9f5fce060f.png"></p>
+<p>Now let&#39;s proceed and make this dynamic, with its data fed from a provider and a corresponding repository, which we&#39;ll later move to Firebase and fetch it asynchronously.</p>
+<h2 is-upgraded>Create the file and folder structure for the Welcome feature</h2>
+<p>Inside the <strong>welcome</strong> feature, create a subfolder called <strong>data</strong> with the following folder structure underneath it:</p>
+<ul>
+<li><strong>welcome</strong> (feature) <ul>
+<li><strong>data</strong> (start here) <ul>
+<li><strong>models</strong><ul>
+<li><strong><em>welcome_page.model.dart</em></strong></li>
+</ul>
+</li>
+<li><strong>repositories</strong><ul>
+<li><strong><em>iwelcome.repository.dart</em></strong></li>
+<li><strong><em>mockwelcome.repository.dart</em></strong></li>
+<li><strong><em>welcome.repository.dart</em></strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>presentation</strong><ul>
+<li><strong>providers</strong><ul>
+<li><strong><em>welcome_page.providers.dart</em></strong></li>
+</ul>
+</li>
+<li><strong>viewmodels</strong><ul>
+<li><strong><em>welcome.viewmodel.dart</em></strong></li>
+<li><strong><em>greetings_label.viewmodel.dart</em></strong></li>
+</ul>
+</li>
+<li><strong>widgets</strong><ul>
+<li><strong><em>greetings_label.dart</em></strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Once the file and folder structure is created, navigate to the <strong>welcome/data/models/welcome_page.model.dart</strong> and add the following code - a class named <strong>WelcomePageModel</strong> that represents the data model that will hydrate the welcome page UI:</p>
+<pre><code language="language-dart" class="language-dart">class WelcomePageModel {
+  final String name;
+  final String title;
+  final String subTitle;
+  final String imgPath;
+  final List&lt;String&gt; greetings;
+
+  WelcomePageModel({
+    required this.name,
+    required this.title,
+    required this.subTitle,
+    required this.imgPath,
+    required this.greetings
+  });
+}
+
+</code></pre>
+<h2 is-upgraded>Establish the contract for the welcome repository</h2>
+<p>As before, go to the <strong>welcome/data/repositories/iwelcome.repository.dart</strong> and paste the following code (with the required imports):</p>
+<pre><code language="language-dart" class="language-dart">abstract class IWelcomeRepository {
+
+  Future&lt;WelcomePageModel&gt; getWelcomePageData();
+}
+
+</code></pre>
+<p>With this, we&#39;ve establish the interface / contract that implementing repositories must follow to fetch the welcome datamodel through a <strong>Future</strong>.</p>
+<p>Define now the mocked implementation of the repository that will retrieve the data - for now we&#39;ll mock it up; later we&#39;ll retrieve it from Firebase.</p>
+<p>Go to the <strong>welcome/data/repositories/mockwelcome.repository.dart</strong> and paste the following code - add the required imports:</p>
+<pre><code language="language-dart" class="language-dart">class MockWelcomeRepository implements IWelcomeRepository {
+
+  @override
+  Future&lt;WelcomePageModel&gt; getWelcomePageData() {
+    
+    return Future.delayed(const Duration(seconds: 2), () {
+      return WelcomePageModel(
+        name: &#39;Roman&#39;,
+        title: &#39;Flutter GDE&#39;, 
+        subTitle: &#39;Certified Cloud Architect&#39;,
+        imgPath: &#39;https://avatars.githubusercontent.com/u/5081804?v=4&#39;,
+        greetings: [
+          &#34;hello&#34;,&#34;hola&#34;, &#34;bonjour&#34;, &#34;ciao&#34;
+        ]
+      );
+    });
+  }
+}
+
+</code></pre>
+<p>Notice in the <strong>MockWelcomeRepository</strong> how we are simulating a delay in retrieving the data (using <strong>Future.delayed</strong>), as in a real-life scenario where there may be a slight delay in the data to arrive from an external source.</p>
+<p>We need a viewmodel to capture the retrieval of the welcome data; later when we intercept the data, we need to feed the greetings to another provider which will handle the triggering of the greetings cycle. We&#39;ll do that later down in this step.</p>
+<p>Go to the <strong>welcome/presentation/viewmodels/welcome.viewmodel.dart</strong> and add the following code (with required imports as usual):</p>
+<pre><code language="language-dart" class="language-dart">class WelcomePageViewModel {
+
+  final Ref ref;
+  final IWelcomeRepository welcomeRepository;
+
+  WelcomePageViewModel(this.welcomeRepository, this.ref);
+
+  Future&lt;WelcomePageModel&gt; getWelcomePageData() async {
+    var welcomePageData = await welcomeRepository.getWelcomePageData();
+    return welcomePageData;
+  }
+}
+
+</code></pre>
+<p>Notice how we are injecting an instance of <strong>IWelcomeRepository</strong> and a <strong>Ref</strong> ref so we can read another provider from inside this viewmodel, as well as consume the incoming welcome data via the repository.</p>
+<p>With all the data models and repositories in place, let&#39;s create the providers that will encapsulate the data and feed it to the UI.</p>
+<h2 is-upgraded>Create the welcome feature providers (pt.1)</h2>
+<p>Go to the <strong>welcome</strong> feature, and locate the <strong>welcome/presentation/providers/welcome_page.providers</strong> and let&#39;s start adding our providers.</p>
+<p>Start by creating a provider that encapsulates an instance of <strong>IWelcomeRepository</strong> - for now we&#39;ll use a mocked version of our repository, so use a <strong>Provider</strong> provider, as such:</p>
+<pre><code language="language-dart" class="language-dart">//... welcome_page.providers.dart
+
+final welcomeRepositoryProvider = Provider&lt;IWelcomeRepository&gt;((ref) {
+  return MockWelcomeRepository();
+});
+
+</code></pre>
+<p>We are adding our first <strong>Provider</strong> called <strong>welcomeRepositoryProvider</strong> which wraps the mocked implementation of our welcome feature repository. This brings synthetic data for testing purposes.</p>
+<p>Next, create another <strong>Provider</strong> that wraps an instance of the <strong>WelcomeViewModel</strong> called <strong>welcomeViewModelProvider</strong>, as such:</p>
+<pre><code language="language-dart" class="language-dart">// add this in the same welcome_page.providers.dart
+
+final welcomeViewModelProvider = Provider&lt;WelcomePageViewModel&gt;((ref) {
+  var repository = ref.read(welcomeRepositoryProvider);
+  return WelcomePageViewModel(repository, ref);
+});
+
+</code></pre>
+<p>Lastly, create a provider - a new type of provider called <strong>FutureProvider</strong> that invokes a wrapper method <strong>getWelcomePageData()</strong> method which internally calls the repository and triggers other actions.</p>
+<pre><code language="language-dart" class="language-dart">// add this in the same welcome_page.providers.dart
+
+final welcomeProvider = FutureProvider((ref) {
+  final welcomeVM = ref.read(welcomeViewModelProvider);
+  return welcomeVM.getWelcomePageData();
+});
+
+</code></pre>
+<p>The <strong>FutureProvider</strong> is the equivalent of Provider but for asynchronous code.</p>
+<p>FutureProvider is typically used for performing and caching asynchronous operations (such as network requests), nicely handling error/loading states of asynchronous operations and combining multiple asynchronous values into another value. We&#39;ll show you how to consume in a minute.</p>
+<h2 is-upgraded>Consume the welcome provider in the WelcomePage UI</h2>
+<p>Let&#39;s proceed and consume the mocked data in our UI instead of having it hard-coded. We&#39;ll do some refactoring as before and turn the existing <strong>WelcomePage StatelessWidget</strong> into a <strong>ConsumerWidget</strong> so we can leverage the <strong>WidgetRef</strong> object <strong>ref</strong> being fed into the <strong>build</strong> method by Riverpod.</p>
+<p>Inside the <strong>build</strong> method, we&#39;ll use the <strong>ref.read()</strong> method to read the <strong>welcomeProvider</strong> which returns an <strong>AsyncValue</strong> that envelopes the <strong>WelcomePageData</strong> data model. This <strong>AsyncValue</strong> has a nice way of handling <strong>error / loading / data</strong> states from this asynchronous operation.</p>
+<p>Out of the <strong>loading</strong> state, it is common to display a loading indicator via a <strong>CircularProgressIndicator</strong>.</p>
+<p>Out of the <strong>error</strong> state, we can display another widget detailing an error. Later we&#39;ll refactor this piece to make it look nicer. In its callback, you get an error object and a stack trace.</p>
+<p>Out of the <strong>data</strong> state (the success case), we collect the incoming unwrapped data and consume it accordingly. Since this is a <strong>WelcomePageModel</strong> data model, we will consume the corresponding properties and feed it to the appropriate widgets.</p>
+<p>The updated <strong>WelcomePage</strong> widget should look like this after implementing the refactoring needed (with required imports):</p>
+<pre><code language="language-dart" class="language-dart">// updated welcome.page.dart
+
+class WelcomePage extends ConsumerWidget {
+
+  static const String route = &#34;/welcome&#34;;
+  const WelcomePage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+
+    var welcomeDataAsync = ref.watch(welcomeProvider);
+
+    return welcomeDataAsync.when(
+      loading: () =&gt; const Center(child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation(Colors.white),
+      )),
+      error:(error, stackTrace) =&gt; const Text(&#39;error&#39;),
+      data: (welcomeData) {
+        return Center(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: PersonalPortfolioColors.welcomePrimary, width: 8),
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                        image: NetworkImage(welcomeData.imgPath),
+                        fit: BoxFit.cover)
+                      )
+                    ),
+                    const SizedBox(width: 40),
+                    const Icon(PersonalPortfolioIcons.wave,
+                      size: 90, color: PersonalPortfolioColors.welcomeIcon
+                    )
+                ]
+              ),
+              Text(welcomeData.greetings[0], style: const TextStyle(
+                  fontSize: 100,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white
+                ),
+              ),
+              Text.rich(
+                TextSpan(
+                style: const TextStyle(fontSize: 100, color: Colors.white),
+                children: [
+                    const TextSpan(text: &#34;I&#39;m &#34;),
+                    TextSpan(
+                        text: welcomeData.name, 
+                        style: const TextStyle(fontWeight: FontWeight.bold)
+                    ),
+                  ]
+                ),
+                textAlign: TextAlign.center,
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                      PersonalPortfolioIcons.badge,
+                      color: PersonalPortfolioColors.welcomePrimary,
+                      size: 80
+                  ),
+                  const SizedBox(width: 20),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                        Text(welcomeData.title, textAlign: TextAlign.center, style: TextStyle(fontSize: 40, color: Colors.white)),
+                        Text(welcomeData.subTitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 40, color: Colors.white)),
+                    ],
+                  )
+                ]
+              )
+            ]
+          )
+        );
+      }
+    );
+  }
+}
+
+</code></pre>
+<p>If you take it for a spin, you&#39;ll notice a 2-second delay and showing the circular progress indicator before showing the mocked data populated in the UI:</p>
+<p class="image-container"><img alt="App" src="img/c268dc6d6ed79074.gif"></p>
+<p>Notice how we&#39;re pulling the data from the <strong>welcomeData</strong> object that arrives through the <strong>data</strong> state. For the greetings label, we&#39;re showing just the first one (<strong>welcomeData.greetings[0]</strong>); what we want is cycle through the list of greetings. For this, we&#39;ll extract that piece into a separate widget called <strong>GreetingsLabel</strong> with its separate viewmodel, provider - all the bells and whistles.</p>
+<h2 is-upgraded>Create the GreetingsLabel viewmodels and providers</h2>
+<p>For the effect of the greeting labels cycling through every second and starting again, we&#39;ll need a <strong>Timer</strong> instance to execute in a periodic fashion.</p>
+<p>Let&#39;s start with the provider.</p>
+<p>Go to the existing <strong>welcome/presentation/providers/welcome_page.providers.dart</strong> and add a provider for the list of strings we&#39;ll feed into its viewmodel, as such:</p>
+<pre><code language="language-dart" class="language-dart">//... add to the existing welcome_pge.providers.dart
+
+final greetingsRawListProvider = StateProvider&lt;List&lt;String&gt;&gt;((ref) {
+  return [];
+});
+
+</code></pre>
+<p>Making it as a <strong>StateProvider</strong> will notify any other entity listening (i.e. any other provider) thus acting accordingly. We&#39;ll need another provider that wraps a viewmodel that will hold the logic for maintaining the timer, setting the current greeting being displayed, etc.</p>
+<p>Go to the <strong>welcome/presentation/viewmodels/greetings_label.viewmodel.dart</strong> and add the following code (with its required imports):</p>
+<pre><code language="language-dart" class="language-dart">class GreetingsViewModel extends StateNotifier&lt;String&gt; {
+  
+  final List&lt;String&gt; greetings;
+  int greetingsCounter = 0;
+  Timer greetingsTimer = Timer(Duration.zero, () {});
+  
+  GreetingsViewModel(super.state, this.greetings);
+
+  void initializeGreetings() {
+
+    greetingsTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (greetingsCounter == greetings.length) {
+        greetingsCounter = 0;
+      }
+
+      state = greetings[greetingsCounter];
+      greetingsCounter++;
+    });
+  }
+
+  @override
+  void dispose() {
+    greetingsTimer.cancel();
+    super.dispose();
+  }
+
+  void resetTimer() {
+    greetingsTimer.cancel();
+    greetingsTimer = Timer(Duration.zero, () {});
+  }
+}
+
+</code></pre>
+<p>Let&#39;s dissect the code for a bit. The <strong>GreetingsViewModel</strong> class takes in a default <strong>state</strong> (a <strong>String</strong>) which will hold the greeting label currently being displayed as well as the actual list of strings to cycle through.</p>
+<p>In the <strong>initializeGreetings()</strong> method is where the action happens - we create a periodic <strong>Timer</strong> for one second, increment a counter based on the amount of greetings, and reset the count back to 0. In each iteration, we reset the internal <strong>state</strong> with the greeting label corresponding to the current iteration count.</p>
+<p>The <strong>dispose()</strong> and <strong>resetTimer()</strong> appropriately clean up resources and reset the timer respectively.</p>
+<p>Let&#39;s go ahead now and create a corresponding provider that will encapsulate an instance of our newly created viewmodel. Go back to the <strong>welcome/presentation/providers/welcome_page.providers.dart</strong> and add this provider:</p>
+<pre><code language="language-dart" class="language-dart">// add it to the existing welcome_page.providers.dart file
+
+final greetingsViewModelProvider = StateNotifierProvider&lt;GreetingsViewModel, String&gt;((ref) {
+  var greetings = ref.watch(greetingsRawListProvider);
+  return GreetingsViewModel(greetings.first, greetings);
+});
+
+</code></pre>
+<p>Notice how from inside the <strong>greetingsViewModelProvider</strong> we watch the <strong>greetingsRawListProvider</strong>, and upon being notified of an updated list, we instantiate a <strong>GreetingsViewModel</strong>, passing the first item in the list by default, plus the list of greetings.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Create the GreetingsLabel widget" duration="0">
+        <p>With all the pieces in place, now go to the <strong>welcome/presentation/widgets/greetings_label.dart</strong> and paste the following code (add the required imports):</p>
+<pre><code language="language-dart" class="language-dart">class GreetingsLabel extends ConsumerStatefulWidget {
+  const GreetingsLabel({super.key});
+  @override
+  GreetingsLabelState createState() =&gt; GreetingsLabelState();
+}
+
+class GreetingsLabelState extends ConsumerState&lt;GreetingsLabel&gt; {
+
+  late GreetingsViewModel vm;
+  
+  @override
+  void initState() {
+    super.initState();
+    vm = ref.read(greetingsViewModelProvider.notifier);
+    vm.initializeGreetings();
+  }
+
+  @override
+  void dispose() {
+    vm.resetTimer();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+
+    var greeting = ref.watch(greetingsViewModelProvider);
+
+    return Text(greeting, style: 
+      const TextStyle(
+        fontSize: 100,
+        fontWeight: FontWeight.bold,
+        color: Colors.white
+      )
+    );
+  }
+}
+
+</code></pre>
+<p>Notice the usage of the <strong>ConsumerStatefulWidget</strong> - another widget provided by Riverpod. We use it to leverage both the <strong>initState</strong> (to initialize the greetings) and the <strong>dispose()</strong> method (to reset the timer in the viewmodel, but not dispose it, since we may need it again if this widget gets reinstated).</p>
+<p>We need to feed the incoming list of greetings coming from the <strong>WelcomePageModel</strong> we capture in the <strong>WelcomePageViewModel</strong>, so let&#39;s go to the <strong>welcome/presentation/viewmodels/welcome.viewmodel.dart</strong> file, and in the <strong>WelcomePageViewModel</strong>&#39;s <strong>getWelcomePageData()</strong> method, before returning the <strong>welcomePageData</strong> data model, add the following line:</p>
+<pre><code language="language-dart" class="language-dart">//... inside the welcome.viewmodel.dart
+//... in the getWelcomePageData() method,
+//... before returning the welcomeData...
+
+ref.read(greetingsRawListProvider.notifier).state = welcomePageData.greetings;
+
+// return welcomeData
+
+</code></pre>
+<p>This will feed the <strong>greetingsRawListProvider</strong> provider with the incoming list of greeting labels (for now a mocked version) which will trigger the sequence of events that will make its way into the <strong>GreetingsViewModel</strong> and rebuild the UI accordingly.</p>
+<p>Back on the <strong>welcome.page.dart</strong>, replace the placeholder <strong>Text</strong> widget pulling the first item in the <strong>welcomeData.greetings</strong> by the newly created widget <strong>GreetingsLabel</strong>.</p>
+<pre><code language="language-dart" class="language-dart">// inside the data state:
+
+/* data: (welcomeData) {
+         return Center(
+           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.center,
+             mainAxisAlignment: MainAxisAlignment.center,
+             children: [
+                Row(...),
+*/              
+                // replace the Text by the GreetingsLabel widget
+                const GreetingsLabel(),
+
+/*              Text.rich(...),
+                Row(...)
+              ]
+           )
+         );
+       }
+*/
+
+</code></pre>
+<p>Then, proceed to run the app again.</p>
+<p class="image-container"><img alt="App" src="img/12f79ce9bd78ff6c.gif"></p>
+<p>And voilá! We&#39;ve got cycling greeting messages! Yay!! Amazing execution!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Bonus #1: Error Condition Widget" duration="0">
+        <p>In the <strong>WelcomePage</strong> page widget, we were able to handle the three conditions available in the <strong>AsyncValue</strong> returned by the <strong>FutureProvider</strong> - the <strong>loading</strong>, <strong>error</strong> and <strong>data</strong>. The <strong>loading</strong> is covered by returning just a <strong>CircularProgressIndicator</strong> widget, the <strong>data</strong> - well, that&#39;s the happy path where we display the actual content we want to display upon receiving the data, but for the <strong>error</strong> state we just have a simple <strong>Text</strong> with the string &#34;error&#34;.</p>
+<p>Let&#39;s improve that by creating shared widget called <strong>ErrorNotification</strong> which will handle the displaying of an error message along with a more proper icon.</p>
+<p>Let&#39;s go to the <strong>lib/shared/widgets</strong> and add a file called <strong>error_notification.dart</strong> and add the following class to it (with required imports):</p>
+<pre><code language="language-dart" class="language-dart">class ErrorNotification extends StatelessWidget {
+
+  final String message;
+  const ErrorNotification({
+    super.key,
+    required this.message  
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.warning, color: Colors.white, size: 80),
+          const SizedBox(height: 20),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: Text(
+              message, textAlign: TextAlign.center, 
+              style: const TextStyle(color: Colors.white, fontSize: 20)
+            )
+          )
+        ],
+      ),
+    );
+  }
+}
+
+</code></pre>
+<p>This widget takes a <strong>String</strong> as a parameter, and displays it with a warning icon on top inside a <strong>ConstrainedBox</strong> with a 300px maximum width.</p>
+<p>Let&#39;s take it for a spin.</p>
+<p>Go to the <strong>WelcomePage</strong> widget (<strong>features/welcome/presentation/pages/welcome.page.dart</strong>) and replace the existing <strong>const Text(‘error&#39;)</strong> by our newly created <strong>ErrorNotification</strong>, feeding into it the error generated and passed through via the callback, as such:</p>
+<pre><code language="language-dart" class="language-dart">// inside the welcome.page.dart...
+
+/* 
+return welcomeDataAsync.when(
+    loading: () =&gt; const Center(child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation(Colors.white),
+    )),
+*/
+    // replace the const Text(&#39;error&#39;) by the following line:
+    error:(error, stackTrace) =&gt; 
+        ErrorNotification(message: error.toString()),
+
+/*
+    data: (welcomeData) {
+        //... rest of the code
+    }
+);
+*/
+
+</code></pre>
+<p>Now, simulate an error condition occuring in your repository. Go to the <strong>MockWelcomeRepository</strong> class (<strong>welcome/data/repositories/mockwelcome.repository.dart</strong> file), then inside the <strong>Future.delayed()</strong> method, comment everything out, and add this line:</p>
+<pre><code language="language-dart" class="language-dart">//... inside the mockwelcome.repository.dart
+
+//... rest of the code omitted for brevity
+
+return Future.delayed(const Duration(seconds: 2), () {
+    return Future.error(&#39;Error retrieving the welcome page data&#39;);
+
+    /*return WelcomePageModel(
+        name: &#39;Roman&#39;,
+        title: &#39;Flutter GDE&#39;, 
+        subTitle: &#39;Certified Cloud Architect&#39;,
+        imgPath: &#39;https://avatars.githubusercontent.com/u/5081804?v=4&#39;,
+        greetings: [
+            &#34;hello&#34;,&#34;hola&#34;, &#34;bonjour&#34;, &#34;ciao&#34;
+        ]
+    );*/
+});
+
+</code></pre>
+<p>This will simulate an error being returned from your future as the data is fetched.</p>
+<p>Run the application and take a look at how it looks:</p>
+<p class="image-container"><img alt="App" src="img/a8fc589f6ecab62.gif"></p>
+<p><strong>NOTE</strong>: make sure to revert the changes before proceeding!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Bonus #2: Error Page" duration="0">
+        <p>Hey, life is not always peaches and cream - you may get error conditions during the execution of your web app, for example, where you may navigate to the wrong page by mistake in order to gracefuly handle issues, kind of like we did with the <strong>ErrorNotification</strong> widget - but that&#39;s just one case.</p>
+<p>This is what happens when you try to navigate to a page that doesn&#39;t exist:</p>
+<p class="image-container"><img alt="App" src="img/319ee2cc93095312.gif"></p>
+<p>Thanks to the <strong>GoRouter</strong> package we can handle this using an existing construct in the routes, using the <strong>errorBuilder</strong> and <strong>errorPageBuilder</strong> methods available in <strong>GoRouter</strong>, as such:</p>
+<pre><code language="language-dart" class="language-dart">//... do not copy, just an example
+
+GoRouter(
+  /* ... */
+  errorBuilder: (context, state) =&gt; const ErrorPage(errorMessage: state.error),
+
+  // ... or... 
+  errorPageBuilder: return AppRoutes.pageTransition(
+    key: state.pageKey,
+    page: const ErrorPage(errorMessage: state.error)
+  )
+)
+
+</code></pre>
+<p>By default, <strong>GoRouter</strong> comes with default error screens for both MaterialApp and CupertinoApp as well as a default error screen in the case that none is used.</p>
+<p>This way you can tap into the routing mechanism of <strong>GoRouter</strong>, and whenever it doesn&#39;t find a matching route among the existing ones, it will default to this <strong>ErrorPage</strong> widget. Mind you, this widget does not exist yet, so let&#39;s go ahead and create it.</p>
+<p>Under the <strong>features</strong> folder, create a feature folder called <strong>error</strong>, and corresponding <strong>presentation/pages</strong> subfolders as well. Inside the <strong>pages</strong> subfolder, create a file called <strong>error_page.dart</strong> and add the following code:</p>
+<pre><code language="language-dart" class="language-dart">import &#39;package:flutter/material.dart&#39;;
+import &#39;package:roman_web_portfolio/styles/colors.dart&#39;;
+
+class ErrorPage extends StatelessWidget {
+
+  final String errorMessage;
+  const ErrorPage({
+    super.key,
+    required this.errorMessage  
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              PersonalPortfolioColors.errorBgTop,
+              PersonalPortfolioColors.errorBgBottom
+            ]
+          )
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning,
+                size: 80,
+                color: PersonalPortfolioColors.errorIcon
+              ),
+              const Text(&#39;Error!&#39;,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 100,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white
+                )
+              ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width / 2,
+                child: Text(errorMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 30,
+                    color: Colors.white
+                  )
+                ),
+              )
+            ]
+          )
+        ),
+      )
+    );
+  }
+}
+
+</code></pre>
+<p>We created a <strong>StatelessWidget</strong> widget called <strong>ErrorPage</strong> that takes a String called <strong>errorMessage</strong> through its constructor, and we style it accordingly.</p>
+<p>Back in the <strong>app_routes.dart</strong>, we use the <strong>errorBuilder</strong> method and hook up our newly created page, feeding into it the <strong>state.error</strong> as a string, as such:</p>
+<pre><code language="language-dart" class="language-dart">//... inside the app_routes.dart
+//... rest of the code omitted
+
+errorBuilder: (context, state) {
+  return ErrorPage(errorMessage: state.error.toString());
+},
+
+</code></pre>
+<p>With this in place, try again to navigate to a page route that doesn&#39;t exist (i.e. welcome3). The routing system, since it does not find it, defaults to the <strong>errorBuilder</strong> callback, which returns the <strong>ErrorPage</strong> page widget, feeds the error from the <strong>state</strong> into this page, and displays it within a more customized error visualization.</p>
+<p class="image-container"><img alt="App" src="img/4b63a51c43834eff.gif"></p>
+<p>And that wraps up this codelab - hope the topics covered have been  useful and you can apply it to your Flutter web apps as well! Cheers!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Wrap-up" duration="0">
+        <p>In this codelab, we accomplished the following:</p>
+<ul>
+<li>Set up the State Management foundation for our Flutter Web App</li>
+<li>Implemented Riverpod as our web app&#39;s default state management strategy</li>
+<li>Use the <strong>StateProvider</strong>, <strong>StateNotifierProvider</strong>, <strong>ConsumerWidget</strong> and <strong>ConsumerStatefulWidget</strong> from <strong>Riverpod</strong></li>
+<li>Build the navigation UI for this web app</li>
+<li>Build out feature pages (placeholders)</li>
+<li>Use shared widgets to be used throughout</li>
+</ul>
+<h2 is-upgraded>Please don&#39;t forget to follow me on social media:</h2>
+<ul>
+<li>On Twitter (<a href="https://www.twitter.com/drcoderz" target="_blank">@drcoderz</a>)</li>
+<li>On YouTube (<a href="https://www.youtube.com/channel/UCKsp3r1ERjCpKJtD2n5WtPg" target="_blank">Roman Just Codes</a>)</li>
+<li>On my <a href="https://romanjustcodes.web.app/" target="_blank">Personal Portfolio</a></li>
+<li>On <a href="https://medium.com/@romanejaquez" target="_blank">Medium</a></li>
+<li>On <a href="https://www.linkedin.com/in/roman-jaquez-8941a424/" target="_blank">LinkedIn</a></li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Challenge Step: Build out the rest of the pages" duration="0">
+        <p>Are you up for a challenge? Based on the knowledge acquired throughout this codelab, you should be able to tackle code challenges - feel free to go back and review the concepts introduced and refresh your memory on those. Remember, practice makes perfection!</p>
+<h2 is-upgraded>Challenge #1: Build the Twitter Feature</h2>
+<h3 is-upgraded>Challenge #1a: Build the UI</h3>
+<p>Challenge #1 consists of developing further the Twitter feature page, as in the schematics below:</p>
+<p class="image-container"><img alt="App" src="img/19b62f96bb7666c.png"></p>
+<p>You should build this UI pretty similar to the <strong>WelcomePage</strong> widget, so take cues from there.</p>
+<h3 is-upgraded>Challenge #1b: Build the TwitterPageModel data model</h3>
+<p>Create a class called <strong>TwitterPageModel</strong> with the following properties:</p>
+<ul>
+<li><strong>icon</strong>: an IconData property representing the twitter icon (use the <strong>PersonalPortfolioIcons</strong> class to use the custom imported icon fonts.)</li>
+<li><strong>title</strong>: String property representing the &#34;Follow me&#34; title</li>
+<li><strong>subTitle</strong>: String property representing the &#34;on Twitter&#34; subtitle</li>
+<li><strong>handle</strong>: String property representing the twitter handle (in my case &#34;@drcoderz&#34;)</li>
+<li><strong>url</strong>: String property representing the URL to the twitter profile.</li>
+</ul>
+<p>Suggestions: add the <strong>url_launcher</strong> package to handle the launching of the twitter URL. You can make the widget that wraps the <strong>handle</strong> property clickable by wrapping it inside a <strong>GestureDetector</strong> and handling the <strong>onTap</strong> event.</p>
+<p>Make sure to place this class following the feature structure as in the <strong>welcome</strong> feature.</p>
+<h3 is-upgraded>Challenge #1c: Create the repository that feeds the TwitterPageModel</h3>
+<p>Create an <strong>ITwitterRepository</strong> interface that defines a contract with a method called <strong>getTwitterData()</strong> which should return an instance of <strong>TwitterPageModel</strong>.</p>
+<p>Create a corresponding <strong>TwitterRepository</strong> and a <strong>MockTwitterRepository</strong>; both should implement the <strong>ITwitterRepository</strong> and the mock returns a mocked version of your <strong>TwitterPageModel</strong> for use within this app.</p>
+<p>Create a viewmodel called <strong>TwitterViewModel</strong> that receives as a parameter an instance of <strong>ITwitterRepository</strong>, exposes a wrapper method called <strong>getTwitterData</strong> and calls the repository&#39;s <strong>getTwitterData</strong>, returning a <strong>Future</strong> wrapping the data model.</p>
+<h2 is-upgraded>Challenge #1d: Create the corresponding Twitter providers</h2>
+<p>Using Riverpod, create the corresponding providers that:</p>
+<ul>
+<li>a <strong>Provider</strong> wrap a mock implementation of <strong>ITwitterRepository</strong></li>
+<li>another <strong>Provider</strong> provider that reads the mock provider, feeds it to an instance of <strong>TwitterViewModel</strong> and returns this instance.</li>
+<li>a <strong>FutureProvider</strong> provider that reads the provider wrapping the viewmodel instance, and calls the <strong>getTwitterData</strong> returning the data.</li>
+</ul>
+<h2 is-upgraded>Challenge #1c: Watch a reference to your twitter provider</h2>
+<p>In your <strong>TwitterPage</strong> widget created as a widget that receives a reference to the <strong>WidgetRef</strong>, watch your twitter provider, and in the <strong>data</strong> state, read the <strong>TwitterPageModel</strong> data and consume the corresponding properties, feeding them into the appropriate widgets accordingly.</p>
+<h2 is-upgraded>Challenge #2: Build out the LinkedPage</h2>
+<p>Follow the same pattern as in the <strong>TwitterPage</strong> challenge to complete this. The UI should look as follows:</p>
+<p class="image-container"><img alt="App" src="img/e5f23821cb9c9d2f.png"></p>
+<h2 is-upgraded>Challenge #3: Build out the Github Page</h2>
+<p>Follow the same pattern as in the <strong>TwitterPage</strong> challenge to complete this. The UI should look as follows:</p>
+<p class="image-container"><img alt="App" src="img/b8f973df9bb158e7.png"></p>
+<h2 is-upgraded>Challenge #4: Build out the Web Page</h2>
+<p>Follow the same pattern as in the <strong>TwitterPage</strong> challenge to complete this. The UI should look as follows:</p>
+<p class="image-container"><img alt="App" src="img/8fb7f000af0f7474.png"></p>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements-tmp/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements-tmp/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements-tmp/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements-tmp/codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>
