@@ -179,7 +179,7 @@ abstract class INavigationRepository {
 <p>We want all implementing repository classes to implement the <strong>getDefaultNavItems()</strong> method, and should return a list of <strong>LeftNavigationItem</strong> instances.</p>
 <p>Notice how we created a <strong>mock_navigation.repository.dart</strong> for mock implementations, and a <strong>navigation.repository.dart</strong> for the real implementation. For now we&#39;ll use the mock version since we&#39;ll be pulling data locally; later we can pull this data from Firebase.</p>
 <p>Go go the <strong>navigation/repositories/mock_navigation.repository.dart</strong> file and add the following code (add the required imports as needed):</p>
-<pre><code language="language-dart" class="language-dart">class MockNavigationRepository extends INavigationRepository {
+<pre><code language="language-dart" class="language-dart">class MockNavigationRepository implements INavigationRepository {
     
   @override
   List&lt;LeftNavigationItem&gt; getDefaultNavItems() {
