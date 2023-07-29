@@ -528,7 +528,7 @@ class WebPage extends StatelessWidget {
 <p class="image-container"><img alt="App" src="img/2b0a91ca4bad9f5.png"></p>
 <h2 is-upgraded>Fill in the blanks on the MockNavigationRepository</h2>
 <p>Go back to the <strong>navigation/data/repositories/mock_navigation.repository.dart</strong> file and fill in the missing routes for each of the corresponding navigation items. Your updated <strong>MockNavigationRepository</strong> class should look like below:</p>
-<pre><code language="language-dart" class="language-dart">class MockNavigationRepository extends INavigationRepository {
+<pre><code language="language-dart" class="language-dart">class MockNavigationRepository implements INavigationRepository {
     
   @override
   List&lt;LeftNavigationItem&gt; getDefaultNavItems() {
